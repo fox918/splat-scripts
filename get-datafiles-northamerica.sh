@@ -18,5 +18,5 @@ echo "unpacking state/county borders.."
 unzip -o *.zip
 cd -
 
-./get-datafiles.sh "North_America"
+./get-datafiles.sh -c "North_America"
 

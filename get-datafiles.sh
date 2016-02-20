@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # get the SRTM data files and convert them for splat use
 

@@ -12,7 +12,7 @@
 
 
 #check for used software
-SPLAT="splat-hd"
+SPLAT="./splat-hd"
 CONVERT="convert"
 MKDIR="mkdir"
 

@@ -251,11 +251,13 @@ if [ -r $BORDERFILE ];then
     SPLAT_OPTIONS+="-b ${BORDERFILE}"
 else
     echo "No Borderfile found, skipping"
+    
+
 fi
 
 if [ $ERP -eq 0 ] ; then
     echo "ERP is null, plot to max attenuation of ${OPTIONS_DB}db"
-    SPLAT_OPTIONS+="-db ${OPTIONS_DB} "
+    SPLAT_OPTIONS+=("-db ${OPTIONS_DB} ")
 fi
 
 echo "Running $SPLAT_CMD to generate images:"

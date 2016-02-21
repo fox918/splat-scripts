@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Generate Splat map and HAAT calculation
 
@@ -16,19 +16,22 @@ TOPOFILEDIR=splat-datafiles/sdf/
 # file for state/county borders
 BORDERFILE=splat-datafiles/borders/co99_d00.dat
 
-# Usage: ./splat-radio.sh example.cfg
+#commands:
+SPLAT=splat
+SPLAT_HD=splat-hd
 
-CONFIG="$1"
-if [ ! -r "$CONFIG" ]; then
-	echo "unable to read $CONFIG"
-	exit 1
-fi
-CONFIGREALPATH=`readlink -f "$CONFIG"`
-
-# load config
-. $CONFIGREALPATH
+#default options:
+USE_HIGHRES=false
+USE_BGWHITE=false
+SPLAT_CMD=$SPLAT
+SPLAT_OPTIONS=("")
+OPTIONS_RADIUS="100" #radius to render in [km]
+OPTIONS_AGL="2"     #above ground level for receiving antenna [m]
+OPTIONS_MR="1.333"  #Earth radius multiplier
+OPTIONS_DB="160" #max attenuation to plot if no ERP given
 
 if [ ! -x `which splat` ]; then
+        #we assume that splat-hd is installed too
 	echo "error: not found in path: splat"
 	exit 1
 fi
@@ -43,8 +46,78 @@ if [ ! -x `which optipng` ]; then
 	exit 1
 fi
 
-# no more variables to edit below here
 
+function helptext {
+cat <<EOF
+
+Usage: $0 -c CONFIGFILE [-b]
+
+-c CONFIGFILE
+        The file with your configuration, see README.md
+        
+-R RADIUS
+        Render only up to a radius from QTH-File in [km]
+        
+-b      Render Topograpy Background in white, used to generate
+        transparent overlays
+        
+-r      Use splat-hd to render high-res images, implies
+        sdf-hd datafiles.
+        
+-h      Display this help message
+
+EOF
+}
+
+#Extract commandline options, see helptext for explanation
+while getopts ":c:brhR:" opt; do
+  case $opt in
+    b)
+      USE_BGWHITE=true
+      SPLAT_OPTIONS+=("-ngs")
+      echo "Rendering Background in white, -b option set"
+      ;;
+    r)
+      USE_HIGHRES=true
+      SPLAT_CMD=$SPLAT_HD
+      echo "Rendering high-res with splat-hd, -r option set"
+      ;;
+    R)
+      OPTIONS_RADIUS=$OPTARG
+      echo "Setting rendering radius to ${OPTARG}km"
+      ;;
+    c)
+      echo "Using configuration file: ${OPTARG}"
+      CONFIGFILE=$OPTARG
+      ;;
+    h)
+      helptext
+      exit 1
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      helptext
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      helptext
+      exit 1
+      ;;
+  esac
+done
+
+#check for configfile, load if given
+if [ ! -z "$CONFIGFILE" ] && [ -r $CONFIGFILE ]; then
+    echo "read in configfile"
+    source $CONFIGFILE
+else
+    echo "No configfile given, exiting now"
+    helptext
+    exit 1
+fi
+
+# no more variables to edit below here
 CLEANCALL=`echo $CALL | sed -e 's|/|-|g;'`
 QTHFILE=$NAME.qth
 LRPFILE=$NAME.lrp
@@ -55,6 +128,7 @@ MAPPNGFILE=$NAME-map.png
 MAPJPGTHMBFILE=$NAME-map-thumb.jpg
 REPFILE=$CLEANCALL-site_report.txt
 HAATFILE=$NAME-haat.txt
+
 
 # invert the longitude, because splat is backwards
 REVLON=`echo "$LON * -1" | bc`
@@ -159,8 +233,36 @@ fi
 # -d = path to elevation data files
 # -o = output file
 # -olditm = old ITM analysis, seems more accurate
-time $NICE splat -t $QTHFILE -R 100 -L 6 -m 1.333 $MAXDB -erp $ERP \
-	-d $TOPOFILEDIR -b $BORDERFILE -olditm -o $MAPPPMFILE
+# -ngs = display topograpy as white
+
+#add all needed options:
+#danger may not be compatible with spaces in filenames
+SPLAT_OPTIONS+=("-olditm")
+SPLAT_OPTIONS+=("-metric")
+SPLAT_OPTIONS+=("-t ${QTHFILE}")
+SPLAT_OPTIONS+=("-R ${OPTIONS_RADIUS}")
+SPLAT_OPTIONS+=("-L ${OPTIONS_AGL}")
+SPLAT_OPTIONS+=("-m ${OPTIONS_MR}")
+SPLAT_OPTIONS+=("-o ${MAPPPMFILE}")
+SPLAT_OPTIONS+=("-erp ${ERP}")
+SPLAT_OPTIONS+=("-d ${TOPOFILEDIR}")
+
+if [ -r $BORDERFILE ];then
+    SPLAT_OPTIONS+="-b ${BORDERFILE}"
+else
+    echo "No Borderfile found, skipping"
+fi
+
+if [ $ERP -eq 0 ] ; then
+    echo "ERP is null, plot to max attenuation of ${OPTIONS_DB}db"
+    SPLAT_OPTIONS+="-db ${OPTIONS_DB} "
+fi
+
+echo "Running $SPLAT_CMD to generate images:"
+echo "Options: ${SPLAT_OPTIONS[@]}"
+#echo $SPLAT_CMD ${SPLAT_OPTIONS[@]}
+time $NICE $SPLAT_CMD ${SPLAT_OPTIONS[@]} 
+
 
 rm -f $MAPPNGFILE $MAPJPGTHMBFILE
 

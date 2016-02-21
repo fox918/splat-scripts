@@ -18,7 +18,7 @@ ii  unzip          6.0-16+deb8u2 amd64        De-archiver for .zip files
 ii  time           1.7-25        amd64        The GNU time program for measuring cpu resource usage
 ```
 
-Success was also reported on Ubuntu, FreeBSD, and OpenBSD.
+Success was also reported on Ubuntu, FreeBSD, OpenBSD and Archlinux.
 
 ## Configuration
 

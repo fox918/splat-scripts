@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/dash
 
 # get the SRTM data files and convert them for splat use
 
@@ -35,8 +35,6 @@ SRTM2SDF_CMD=$SRTM2SDF
 
 DIRECT_CONVERSION=false
 CONTINENT=unknown
-USE_LONRANGE=false
-USE_LATRANGE=false
 
 
 # Check if all prerequisites are installed
@@ -45,7 +43,10 @@ if [ ! -x `which $SRTM2SDF` ]; then
 	echo "error: not found in path: srtm2sdf splat conversion utility"
 	exit 1
 fi
-
+if [ ! -x `which $SRTM2SDF_HD` ]; then
+	echo "error: not found in path: srtm2sdf-hd splat conversion utility"
+	exit 1
+fi
 if [ ! -x `which readlink` ]; then
 	echo "error: not found in path: readlink"
 	exit 1
@@ -68,10 +69,10 @@ fi
 
 
 
-function helptext {
+helptext() {
 cat <<EOF
 
-Usage: $0 -c CONTINENT [-x XMIN-XMAX] [-d] [-r]
+Usage: $0 -c CONTINENT|-r [-d] [-h]
 
 -h      display this helptext
 
@@ -111,11 +112,24 @@ while getopts ":dc:rhx:y:" opt; do
       ;;
     c)
       CONTINENT=$OPTARG
-      echo "Continent set to $CONTINENT"
+      case $CONTINENT in
+	North_America|South_America|Africa|Eurasia|Australia|Islands)
+		echo "Continent set to $CONTINENT"
+		;;
+	*)
+		echo "Invalid continent: $CONTINENT"
+		helptext
+		exit 1
+		;;
+      esac
+      INDEXURL=${SRTM3URL}${CONTINENT}/
       ;;
     r)
       USE_HIGHRES=true
-      echo "HIGH RESOLUTION: Using $SRTM2SDF_CMD instead of srtm2sdf"
+      SRTM2SDF_CMD=$SRTM2SDF_HD
+      #unfortunately there is no listing per continent
+      INDEXURL=$SRTM1URL
+      echo "HIGH RESOLUTION: Using $SRTM2SDF_HD instead of srtm2sdf"
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -130,28 +144,11 @@ while getopts ":dc:rhx:y:" opt; do
   esac
 done
 
-#set url to download tiles from:
-if [ "$USE_HIGHRES" = true ]
-then
-    SRTM2SDF_CMD=$SRTM2SDF_HD
-
-    #unfortunately there is no listing per continent
-    INDEXURL=$SRTM1URL
-    
-else
-    case $CONTINENT in
-	North_America|South_America|Africa|Eurasia|Australia|Islands)
-		echo $CONTINENT
-		;;
-	*)
-		echo "Invalid continent: $CONTINENT"
-		helptext
-		exit 1
-		;;
-    esac
-    INDEXURL=${SRTM3URL}${CONTINENT}/
+if [ "$USE_HIGHRES" = false ] && [ "$CONTINENT" = unknown ]; then
+    echo "no arguments given"
+    helptext
+    exit 1
 fi
-
 
 
 # Start to download tiles:
@@ -220,7 +217,7 @@ for FILE in $(cat $FILELIST); do
     fi
     
     # TODO comment for prod:
-    #break;
+    break;
 done
 
 #delete tempfiles

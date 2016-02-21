@@ -61,7 +61,7 @@ down to:
 ## Usage
 
 ```
-$ ./splat-radio.sh example.cfg
+$ ./splat-radio.sh -c example.cfg
 ```
 
 ```

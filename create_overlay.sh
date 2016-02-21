@@ -12,26 +12,93 @@
 
 
 #check for used software
-SPLAT="./splat-hd"
+SPLATSCRIPT="./splat-radio.sh"
 CONVERT="convert"
 MKDIR="mkdir"
 
 GDAL_TRANSLATE="gdal_translate"
 GDAL_TILE="gdal2tiles.py"
 
-#read in the configuration
-if ! [ -f "$1" ]
-then
-    echo "No config file given, exit"
-    exit
-fi
-    
-. ./$1
+USE_HIGHRES=false
 
+
+# Check if all prerequisites are installed
+if [ ! -x `which $SPLATSCRIPT` ]; then
+	echo "error: not found in path: $SPLAT"
+	exit 1
+fi
+if [ ! -x `which $GDAL_TRANSLATE` ]; then
+	echo "error: not found in path: gdal_translate"
+	exit 1
+fi
+if [ ! -x `which $GDAL_TILE` ]; then
+	echo "error: not found in path: $GDAL_TILE"
+	exit 1
+fi
+if [ ! -x `which $CONVERT` ]; then
+	echo "error: not found in path: convert"
+	exit 1
+fi
+if [ ! -x `which $MKDIR` ]; then
+	echo "error: not found in path: mkdir"
+	exit 1
+fi
+
+
+function helptext {
+cat <<EOF
+
+Usage: $0 -c CONFIGFILE 
+
+-c CONFIGFILE
+        The file with your configuration, see README.md
+        
+
+EOF
+}
+
+#Extract commandline options, see helptext for explanation
+while getopts ":c:hr" opt; do
+  case $opt in
+    r)
+      USE_HIGHRES=true
+      SPLAT_CMD=$SPLAT_HD
+      echo "Rendering high-res with splat-hd, -r option set"
+      ;;
+    c)
+      echo "Using configuration file: ${OPTARG}"
+      CONFIGFILE=$OPTARG
+      ;;
+    h)
+      helptext
+      exit 1
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      helptext
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      helptext
+      exit 1
+      ;;
+  esac
+done
+
+#check for configfile, load if given
+if [ ! -z "$CONFIGFILE" ] && [ -r $CONFIGFILE ]; then
+    echo "read in configfile"
+    source $CONFIGFILE
+else
+    echo "No configfile given, exiting now"
+    helptext
+    exit 1
+fi
 
 #vars
-PPMFILE="./$NAME-map-hd.ppm"
-PNGSOLID="./$NAME-map-hd-solid.png"
+#PPMFILE="./$NAME-map-hd.ppm"
+PNGSOLID=$NAME-map.png
 PNGTRANS="./$NAME-map-hd-tr.png"
 SCALEFILE="./$NAME-scale.png"
 
@@ -48,11 +115,12 @@ WEBVIEWER="all"
 
 #render the splat image with white background
 # TODO change the ./splat-radio.sh to do this
-$SPLAT -t hol.qth -d ./maps/ -L 2 -metric -R 25 -sc  -ngs -erp $ERP -o $PPMFILE
+$SPLATSCRIPT -c $CONFIGFILE -R 20 -b -r
+#$SPLAT -t hol.qth -d ./maps/ -L 2 -metric -R 25 -sc  -ngs -erp $ERP -o $PPMFILE
 
 
 #prepare image
-$CONVERT $PPMFILE $PNGSOLID
+#$CONVERT $PPMFILE $PNGSOLID
 $CONVERT -gravity South -crop x30+0+0 $PNGSOLID $SCALEFILE
 $CONVERT $PNGSOLID -transparent white $PNGTRANS
 #crop scale from image

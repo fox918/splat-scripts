@@ -104,7 +104,7 @@ SCALEFILE="./$NAME-scale.png"
 
 GEOTIFF="./$NAME-map-hd.geotiff"
 GEOVRT="./$NAME-map-hd.vrt"
-TILEFOLDER="./$name-geotiles"
+TILEFOLDER="./$NAME-geotiles"
 
 GEODATE="EPSG:4326"
 ZOOMLEVELS="7-14"
@@ -124,12 +124,13 @@ $SPLATSCRIPT -c $CONFIGFILE -R 20 -b -r
 $CONVERT -gravity South -crop x30+0+0 $PNGSOLID $SCALEFILE
 $CONVERT $PNGSOLID -transparent white $PNGTRANS
 #crop scale from image
-$CONVERT -crop +0-30 $PNGTRANS $PNGTRANS 
+$CONVERT -crop +0-30  $PNGTRANS  $PNGTRANS 
 
 #do some oversampling to create softer images
 # TODO make flag to enable oversampling 
 # this is 'cheating' but creates nicer images
-# $CONVERT hol.ppm -resize 400% -gaussian 10 filter.png
+echo "Upscale image for smoother result"
+#$CONVERT $PNGTRANS -resize 200% -gaussian 10 $PNGTRANS
 
 #create a georeferenced geotiff out of the image
 # not sure if gdal-hd images are always 1 degree in height, maybe calculate out of imagesize
@@ -140,7 +141,9 @@ $GDAL_TRANSLATE -of GTiff -a_ullr $LONINT $((LATINT+1)) $((LONINT+2)) $LATINT -a
 # $GDAL_TRANSLATE -of Gtiff -a_ullr 7 48 9 47 -a_srs EPSG:4326 hol.png test.tif
 
 #create the maptiles out of the geotiff
+
 $MKDIR -p $TILEFOLDER
+#maybe add -expand rgba
 $GDAL_TRANSLATE -a_srs $GEODATE -of vrt -expand rgba $GEOTIFF $GEOVRT
 
 # TODO some strange bug if adding true geodate
